@@ -1,12 +1,10 @@
 #include "display/game_window.hpp"
-#include "shaders/shader.hpp"
+#include "scenes/p1_scene.hpp"
+#include "scenes/p2_scene.hpp"
+#include "scenes/p3_scene.hpp"
+#include "scenes/p4_scene.hpp"
+#include "scenes/p5_scene.hpp"
 #include <iostream>
-
-// Template stuff
-Shader s;
-unsigned int VAO;
-unsigned int VBO;
-unsigned int EBO;
 
 // Called whenever the window or framebuffer's size is changed
 void FramebufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -36,83 +34,43 @@ void GameWindow::LoadContent() {
     ImGui_ImplOpenGL3_Init("#version 330");
     std::cout << "INFO::IMGUI::SUCCESSFULLY_INITIALIZED" << std::endl;
 
-    // Load the template shader
-    s = Shader::LoadShader("resources/shaders/testing.vs", "resources/shaders/testing.fs");
-
-    // Vertices needed for a square
-    float vertices[] = {
-    0.5f,  0.5f, 0.0f,  // top right
-    0.5f, -0.5f, 0.0f,  // bottom right
-    -0.5f, -0.5f, 0.0f,  // bottom left
-    -0.5f,  0.5f, 0.0f   // top left 
-    };
-
-    // Indices for rendering the above square
-    unsigned int indices[] = {
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };
-
-    // Create Vertex Array object
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO); // And bind it
-
-    // Create Vertex Buffer object
-    glGenBuffers(1, &VBO);
-    // And bind it (this also includes it into the VAO)
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // Fill the VBO with vertex data, simply positions
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // layout = 0 should contain these positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0); // Enable that shit
-
-    // Create index buffer
-    glGenBuffers(1, &EBO);
-    // And bind it (also included in VAO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // Fill with indices!
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    // Register scenes
+    sceneManager.RegisterScene(new P1Scene());
+    sceneManager.RegisterScene(new P2Scene());
+    sceneManager.RegisterScene(new P3Scene());
+    sceneManager.RegisterScene(new P4Scene());
+    sceneManager.RegisterScene(new P5Scene());
+    sceneManager.SwitchTo(0);
 }
 
 void GameWindow::Update() {
-    // Performs hot-reload of shader. Only reloads whenever it has been modified - so not every frame.
-    s.ReloadFromFile();
+    sceneManager.Update();
 }
 
 void GameWindow::Render() {
-    // Bind the VAO
-    glBindVertexArray(VAO);
-
-    // Make sure we're using the correct shader program.
-    // Must be done per-frame, since the shader program id might change when hot-reloading
-    glUseProgram(s.programID);
-
-    // Create new imgui frames
+    // Begin ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // Clear the window
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    // Clear screen
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Draw the square
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // Tab bar and active scene
+    sceneManager.RenderTabs();
+    sceneManager.Render();
 
-    // Draw imgui
-    ImGui::ShowDemoWindow();
+    // End ImGui frame
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    // Swap double buffers and poll OS-events
     glfwSwapBuffers(this->windowHandle);
     glfwPollEvents();
 }
 
 void GameWindow::Unload() {
-    // Destroy imgui
+    sceneManager.UnloadAll();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
