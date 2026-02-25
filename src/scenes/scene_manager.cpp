@@ -28,6 +28,14 @@ void SceneManager::Render() {
 }
 
 void SceneManager::RenderTabs() {
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, 0));
+    ImGui::Begin("##SceneBar", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoBringToFrontOnFocus);
+
     if (ImGui::BeginTabBar("SceneTabs")) {
         for (int i = 0; i < (int)scenes.size(); i++) {
             if (ImGui::BeginTabItem(scenes[i]->name.c_str())) {
@@ -39,6 +47,8 @@ void SceneManager::RenderTabs() {
         }
         ImGui::EndTabBar();
     }
+
+    ImGui::End();
 }
 
 void SceneManager::UnloadAll() {
