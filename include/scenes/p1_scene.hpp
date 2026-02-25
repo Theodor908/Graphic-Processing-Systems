@@ -4,7 +4,7 @@
 
 class P1Scene : public Scene {
 public:
-    P1Scene() : Scene("P1 - Cube Scene") {}
+    P1Scene() : Scene("Scene 1") {}
 
     void Load() override;
     void Update() override;

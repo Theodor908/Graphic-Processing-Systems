@@ -3,7 +3,7 @@
 
 class P5Scene : public Scene {
 public:
-    P5Scene() : Scene("P5 - Assignment 5") {}
+    P5Scene() : Scene("Scene 5") {}
     void Load() override;
     void Update() override;
     void Render() override;
