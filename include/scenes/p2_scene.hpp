@@ -3,7 +3,7 @@
 
 class P2Scene : public Scene {
 public:
-    P2Scene() : Scene("P2 - Assignment 2") {}
+    P2Scene() : Scene("Scene 2") {}
     void Load() override;
     void Update() override;
     void Render() override;
