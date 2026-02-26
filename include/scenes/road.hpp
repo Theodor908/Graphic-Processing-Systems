@@ -1,14 +1,12 @@
 #pragma once
 #include "glad.h"
 #include "shaders/shader.hpp"
-#include "scenes/terrain_generator.hpp"
 #include <glm/glm.hpp>
 #include <string>
 
-class Terrain {
+class Road {
 public:
     void Load();
-    void Load(TerrainGenerator* generator);
     void Render(const glm::mat4& view, const glm::mat4& projection);
     void Unload();
     void DrawGeometry();
@@ -20,8 +18,13 @@ private:
     unsigned int texture = 0;
     int indexCount = 0;
 
-    int gridSize = 200;
+    // Circuit parameters — tweak these to change the road shape
+    int segments = 64;          // how many slices around the loop (more = smoother)
+    float outerRadiusX = 40.0f; // ellipse X radius (outer edge)
+    float outerRadiusZ = 30.0f; // ellipse Z radius (outer edge)
+    float roadWidth = 5.0f;     // distance between inner and outer edge
+    float roadY = 1.02f;        // height above terrain (avoids z-fighting)
 
+    void GenerateGeometry();
     unsigned int LoadTexture(const std::string& path);
-    void GenerateMesh(TerrainGenerator* generator);
 };
