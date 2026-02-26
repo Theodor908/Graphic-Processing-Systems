@@ -33,6 +33,12 @@ void P2Scene::SetupObjects() {
         float z = (30.0f + 4.0f) * sin(angle);
         float height = 6.0f + (rand() % 5);
         objects.push_back({ glm::vec3(x, 1.0f, z), glm::vec3(1, height, 1), woodTex });
+        float treeTop = 1.0f + height;
+        for (int b = 0; b < 4; b++) {
+            float yaw = glm::radians(b * 90.0f);
+            objects.push_back({ glm::vec3(x, treeTop, z), glm::vec3(0.4f, 3.0f, 0.4f), woodTex,
+                                glm::vec3(0.0f, yaw, glm::radians(-45.0f)) });
+        }
     }
 }
 

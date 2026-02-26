@@ -86,13 +86,7 @@ void StaticObjectRenderer::Render(const std::vector<ObjectInstance>& objects,
     glBindVertexArray(cubeVAO);
 
     for (const auto& obj : objects) {
-        // Build model matrix: translate to position, then scale
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, obj.position);
-        model = glm::scale(model, obj.scale);
-
-        // Shift the cube up so its base sits on the ground (not centered at position)
-        model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+        glm::mat4 model = ModelMatrixFromObject(obj);
 
         glm::mat4 mvp = projection * view * model;
         int mvpLoc = glGetUniformLocation(shader.programID, "uMVP");
