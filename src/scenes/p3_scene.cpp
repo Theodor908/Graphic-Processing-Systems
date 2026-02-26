@@ -47,7 +47,15 @@ void P3Scene::SetupObjects() {
         float x = (40.0f + 4.0f) * cos(angle);
         float z = (30.0f + 4.0f) * sin(angle);
         float height = 6.0f + (rand() % 5);
+        // Trunk
         objects.push_back({ glm::vec3(x, 1.0f, z), glm::vec3(1, height, 1), woodTex });
+        // 4 branches at the top, tilted 45 degrees outward
+        float treeTop = 1.0f + height;
+        for (int b = 0; b < 4; b++) {
+            float yaw = glm::radians(b * 90.0f);
+            objects.push_back({ glm::vec3(x, treeTop, z), glm::vec3(0.4f, 3.0f, 0.4f), woodTex,
+                                glm::vec3(0.0f, yaw, glm::radians(-45.0f)) });
+        }
     }
 
     // 4 street lamp poles (L-shaped) at the spot light positions
@@ -96,7 +104,7 @@ void P3Scene::SetupLights() {
     float streetlightAngles[] = { 0.0f, 90.0f, 180.0f, 270.0f };
     for (int i = 0; i < 4; i++) {
         float angle = glm::radians(streetlightAngles[i]);
-        float x = 37.5f * cos(angle);  // middle of road
+        float x = 37.5f * cos(angle);
         float z = 27.5f * sin(angle);
 
         SpotLight spot;
@@ -108,25 +116,6 @@ void P3Scene::SetupLights() {
         spot.outerCutOff = glm::cos(glm::radians(40.0f));
         spot.range = 30.0f;
         lighting.AddSpotLight(spot);
-    }
-
-    // 3 point lights around the scene — warm, cool, accent
-    glm::vec3 pointColors[] = {
-        glm::vec3(1.0f, 0.6f, 0.3f),   // warm orange
-        glm::vec3(0.3f, 0.6f, 1.0f),   // cool blue
-        glm::vec3(0.5f, 1.0f, 0.5f)    // green accent
-    };
-    float pointAngles[] = { 60.0f, 180.0f, 300.0f };
-    for (int i = 0; i < 3; i++) {
-        float angle = glm::radians(pointAngles[i]);
-        PointLight pt;
-        pt.position = glm::vec3(25.0f * cos(angle), 5.0f, 25.0f * sin(angle));
-        pt.color = pointColors[i];
-        pt.intensity = 3.0f;
-        pt.constant = 1.0f;
-        pt.linear = 0.09f;
-        pt.quadratic = 0.032f;
-        lighting.AddPointLight(pt);
     }
 }
 
@@ -140,12 +129,8 @@ void P3Scene::OnRenderGeometry(unsigned int shaderID, const glm::mat4& lightMVP)
 
     // Objects
     for (const auto& obj : objects) {
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, obj.position);
-        model = glm::scale(model, obj.scale);
-        model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
-        glm::mat4 mvp = lightMVP * model;
-        glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(mvp));
+        glm::mat4 model = ModelMatrixFromObject(obj);
+        glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(lightMVP * model));
         objectRenderer.BindAndDraw();
     }
 }
@@ -167,10 +152,7 @@ void P3Scene::OnRender(const glm::mat4& view, const glm::mat4& projection) {
 
         // Objects
         for (const auto& obj : objects) {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, obj.position);
-            model = glm::scale(model, obj.scale);
-            model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+            glm::mat4 model = ModelMatrixFromObject(obj);
             glUniformMatrix4fv(glGetUniformLocation(litShader.programID, "uModel"),
                                1, GL_FALSE, glm::value_ptr(model));
             glActiveTexture(GL_TEXTURE0);

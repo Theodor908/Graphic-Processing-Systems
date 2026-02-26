@@ -289,13 +289,18 @@ void LightingSystem::ApplyToShader(unsigned int litShaderID, const glm::vec3& ca
                     pointLights[i].quadratic);
     }
 
-    // Bind point shadow cubemaps to texture units 6-8
+    // Always assign cubemap samplers to units 6-8 to avoid sampler type conflict on unit 0
+    for (int i = 0; i < MAX_POINT_SHADOW_LIGHTS; i++) {
+        std::string idx = std::to_string(i);
+        glUniform1i(glGetUniformLocation(litShaderID,
+                    ("uPointShadowMap[" + idx + "]").c_str()), 6 + i);
+    }
+
+    // Bind actual point shadow cubemaps to texture units 6-8
     for (int i = 0; i < numPointShadows; i++) {
         std::string idx = std::to_string(i);
         glActiveTexture(GL_TEXTURE6 + i);
         glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowCubemaps[i]);
-        glUniform1i(glGetUniformLocation(litShaderID,
-                    ("uPointShadowMap[" + idx + "]").c_str()), 6 + i);
         glUniform1f(glGetUniformLocation(litShaderID,
                     ("uPointFarPlane[" + idx + "]").c_str()), pointShadowFarPlanes[i]);
     }
