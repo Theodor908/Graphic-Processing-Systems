@@ -4,7 +4,7 @@
 
 class P1Scene : public Scene3D {
 public:
-    P1Scene() : Scene3D("Skybox", glm::vec3(0.0f, 2.0f, 3.0f)) {}
+    P1Scene() : Scene3D({.name = "Skybox", .cameraPos = glm::vec3(0.0f, 2.0f, 3.0f)}) {}
 
     void OnLoad() override;
     void OnUpdate() override;

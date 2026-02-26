@@ -1,4 +1,4 @@
-#include "scenes/terrain.hpp"
+#include "scenes/road.hpp"
 #include "stb_image.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -6,70 +6,69 @@
 #include <vector>
 #include <cmath>
 
-void Terrain::Load() {
-    FlatGenerator flat(1.0f);
-    Load(&flat);
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
+
+void Road::Load() {
+    shader = Shader::LoadShader("resources/shaders/road.vs", "resources/shaders/road.fs");
+    GenerateGeometry();
+    texture = LoadTexture("resources/textures/road/road.jpg");
 }
 
-void Terrain::Load(TerrainGenerator* generator) {
-    shader = Shader::LoadShader("resources/shaders/terrain.vs", "resources/shaders/terrain.fs");
-    GenerateMesh(generator);
-    texture = LoadTexture("resources/textures/terrain/terrain.jpg");
-}
-
-void Terrain::GenerateMesh(TerrainGenerator* generator) {
+void Road::GenerateGeometry() {
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
 
-    for (int z = 0; z <= gridSize; z++) {
-        for (int x = 0; x <= gridSize; x++) {
-            float xPos = (float)x - gridSize / 2.0f;
-            float zPos = (float)z - gridSize / 2.0f;
-            float yPos = generator->GetHeight(xPos, zPos);
+    segments = 64;
+    outerRadiusX = 40.0f;
+    outerRadiusZ = 30.0f;
+    roadWidth = 5.0f;
+    roadY = 1.02f;
 
-            float u = (float)x / gridSize;
-            float v = (float)z / gridSize;
+    for(int i = 0; i <= segments; i++)
+    {
+        float angle = (i / (float)segments) * 2 * PI;
+        float outerX = outerRadiusX * cos(angle);
+        float outerZ = outerRadiusZ * sin(angle);
+        float innerX = (outerRadiusX - roadWidth) * cos(angle);
+        float innerZ = (outerRadiusZ - roadWidth) * sin(angle);
 
-            // Position
-            vertices.push_back(xPos);
-            vertices.push_back(yPos);
-            vertices.push_back(zPos);
-
-            // Normal from cross product of neighbors
-            float hL = generator->GetHeight(xPos - 1, zPos);
-            float hR = generator->GetHeight(xPos + 1, zPos);
-            float hD = generator->GetHeight(xPos, zPos - 1);
-            float hU = generator->GetHeight(xPos, zPos + 1);
-            glm::vec3 normal = glm::normalize(glm::vec3(hL - hR, 2.0f, hD - hU));
-            vertices.push_back(normal.x);
-            vertices.push_back(normal.y);
-            vertices.push_back(normal.z);
-
-            // UV
-            vertices.push_back(u);
-            vertices.push_back(v);
-        }
+        // Outer vertex
+        vertices.push_back(outerX);
+        vertices.push_back(roadY);
+        vertices.push_back(outerZ);
+        vertices.push_back(0.0f);  // normal x
+        vertices.push_back(1.0f);  // normal y
+        vertices.push_back(0.0f);  // normal z
+        vertices.push_back(1.0f);  // u
+        vertices.push_back((float)i / segments * 4.0f);  // v
+        // Inner vertex
+        vertices.push_back(innerX);
+        vertices.push_back(roadY);
+        vertices.push_back(innerZ);
+        vertices.push_back(0.0f);  // normal x
+        vertices.push_back(1.0f);  // normal y
+        vertices.push_back(0.0f);  // normal z
+        vertices.push_back(0.0f);  // u
+        vertices.push_back((float)i / segments * 4.0f);  // v
     }
 
-    for (int z = 0; z < gridSize; z++) {
-        for (int x = 0; x < gridSize; x++) {
-            int topLeft = z * (gridSize + 1) + x;
-            int topRight = topLeft + 1;
-            int bottomLeft = (z + 1) * (gridSize + 1) + x;
-            int bottomRight = bottomLeft + 1;
+    for(int i = 0; i < segments; i++)
+    {
+        indices.push_back(i * 2);       // outer current
+        indices.push_back(i * 2 + 1);   // inner current
+        indices.push_back((i + 1) * 2); // outer next
 
-            indices.push_back(topLeft);
-            indices.push_back(bottomLeft);
-            indices.push_back(topRight);
-
-            indices.push_back(topRight);
-            indices.push_back(bottomLeft);
-            indices.push_back(bottomRight);
-        }
+        indices.push_back(i * 2 + 1);   // inner current
+        indices.push_back((i + 1) * 2 + 1); // inner next
+        indices.push_back((i + 1) * 2); // outer next
     }
 
     indexCount = (int)indices.size();
 
+
+    // --- GPU upload (don't modify below) ---
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
@@ -96,7 +95,7 @@ void Terrain::GenerateMesh(TerrainGenerator* generator) {
     glBindVertexArray(0);
 }
 
-void Terrain::Render(const glm::mat4& view, const glm::mat4& projection) {
+void Road::Render(const glm::mat4& view, const glm::mat4& projection) {
     glUseProgram(shader.programID);
 
     glm::mat4 model = glm::mat4(1.0f);
@@ -113,13 +112,13 @@ void Terrain::Render(const glm::mat4& view, const glm::mat4& projection) {
     glBindVertexArray(0);
 }
 
-void Terrain::DrawGeometry() {
+void Road::DrawGeometry() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
 
-void Terrain::Unload() {
+void Road::Unload() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
@@ -129,7 +128,7 @@ void Terrain::Unload() {
     indexCount = 0;
 }
 
-unsigned int Terrain::LoadTexture(const std::string& path) {
+unsigned int Road::LoadTexture(const std::string& path) {
     unsigned int textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -146,7 +145,7 @@ unsigned int Terrain::LoadTexture(const std::string& path) {
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     } else {
-        std::cout << "ERROR::TERRAIN::FAILED_TO_LOAD_TEXTURE: " << path << std::endl;
+        std::cout << "ERROR::ROAD::FAILED_TO_LOAD_TEXTURE: " << path << std::endl;
     }
     stbi_image_free(data);
 
