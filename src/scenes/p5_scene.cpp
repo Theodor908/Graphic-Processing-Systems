@@ -218,13 +218,21 @@ void P5Scene::UpdatePlayerCar(float dt) {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) carYaw -= CAR_TURN_SPEED * dt;
     }
 
+    // Road detection: on road if between inner ellipse (35,25) and outer ellipse (40,30)
+    float ex = carPos.x, ez = carPos.z;
+    float eOuter = (ex/40.0f)*(ex/40.0f) + (ez/30.0f)*(ez/30.0f);
+    float eInner = (ex/35.0f)*(ex/35.0f) + (ez/25.0f)*(ez/25.0f);
+    bool onRoad = (eOuter <= 1.0f && eInner >= 1.0f);
+    float speedMult = onRoad ? 1.5f : 1.0f;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) carSpeed += CAR_ACCEL * dt;
     else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) carSpeed -= CAR_BRAKE * dt;
     else {
         if (carSpeed > 0) carSpeed = glm::max(0.0f, carSpeed - CAR_FRICTION * dt);
         else if (carSpeed < 0) carSpeed = glm::min(0.0f, carSpeed + CAR_FRICTION * dt);
     }
-    carSpeed = glm::clamp(carSpeed, -CAR_MAX_SPEED * 0.5f, CAR_MAX_SPEED);
+    float maxSpd = CAR_MAX_SPEED * speedMult;
+    carSpeed = glm::clamp(carSpeed, -maxSpd * 0.5f, maxSpd);
 
     float rad = glm::radians(carYaw);
     glm::vec3 forward(std::sin(rad), 0, std::cos(rad));
