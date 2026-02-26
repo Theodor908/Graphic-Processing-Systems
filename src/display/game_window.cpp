@@ -55,7 +55,7 @@ void GameWindow::Render() {
 
     // Clear screen
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Tab bar and active scene
     sceneManager.RenderTabs();

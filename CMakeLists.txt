@@ -8,6 +8,7 @@ include_directories(libs/glad)
 include_directories(libs/KHR)
 include_directories(libs/imgui)
 include_directories(libs/glfw)
+include_directories(libs)
 include_directories(include)
 
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
