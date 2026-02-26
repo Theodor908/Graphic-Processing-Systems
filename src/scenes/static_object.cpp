@@ -129,7 +129,10 @@ unsigned int StaticObjectRenderer::LoadTexture(const std::string& path) {
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
     if (data) {
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+        // RGB rows may not be 4-byte aligned — tell OpenGL to expect tight packing
+        if (nrChannels == 3) glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        if (nrChannels == 3) glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
         glGenerateMipmap(GL_TEXTURE_2D);
     } else {
         std::cout << "ERROR::STATIC_OBJECT::FAILED_TO_LOAD_TEXTURE: " << path << std::endl;
