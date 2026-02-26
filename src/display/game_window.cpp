@@ -4,6 +4,7 @@
 #include "scenes/p3_scene.hpp"
 #include "scenes/p4_scene.hpp"
 #include "scenes/p5_scene.hpp"
+#include "scenes/p6_scene.hpp"
 #include <iostream>
 
 // Called whenever the window or framebuffer's size is changed
@@ -40,6 +41,7 @@ void GameWindow::LoadContent() {
     sceneManager.RegisterScene(new P3Scene());
     sceneManager.RegisterScene(new P4Scene());
     sceneManager.RegisterScene(new P5Scene());
+    sceneManager.RegisterScene(new P6Scene());
     sceneManager.SwitchTo(0);
 }
 
