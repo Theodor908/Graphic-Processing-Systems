@@ -1,4 +1,5 @@
 #include "scenes/p1_scene.hpp"
+#include "utils/time.hpp"
 #include "glad.h"
 #include "glfw3.h"
 
@@ -6,10 +7,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-void P1Scene::Load() {
+void P1Scene::OnLoad() {
     shader = Shader::LoadShader("resources/shaders/cube.vs", "resources/shaders/cube.fs");
 
-    // Cube vertices: 6 faces × 4 vertices, each with position + color
     float vertices[] = {
         -0.5f, -0.5f,  0.5f,   0.9f, 0.2f, 0.2f,
          0.5f, -0.5f,  0.5f,   0.9f, 0.2f, 0.2f,
@@ -68,65 +68,14 @@ void P1Scene::Load() {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glBindVertexArray(0);
-
-    // Load skybox
-    skybox.Load();
-
-    glEnable(GL_DEPTH_TEST);
-    glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
-void P1Scene::Update() {
+void P1Scene::OnUpdate() {
     shader.ReloadFromFile();
     rotationAngle += 0.5f;
-
-    int width, height;
-    GLFWwindow* window = glfwGetCurrentContext();
-    glfwGetWindowSize(window, &width, &height);
-    float centerX = width / 2.0f;
-    float centerY = height / 2.0f;
-
-    double mouseX, mouseY;
-
-    glfwGetCursorPos(glfwGetCurrentContext(), &mouseX, &mouseY);
-
-    float deltaX = (float)mouseX - centerX;
-    float deltaY = centerY - (float)mouseY;  // reversed Y
-
-    glfwSetCursorPos(window, centerX, centerY);
-
-    float sensitivity = 0.1f;
-    yaw += deltaX * sensitivity;
-    pitch += deltaY * sensitivity;
-
-    if(pitch > 120.0f) pitch = 120.0f;
-    if(pitch < -120.0f) pitch = -120.0f;
-
-    cameraDir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraDir.y = sin(glm::radians(pitch));
-    cameraDir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraDir = glm::normalize(cameraDir);
 }
 
-void P1Scene::Render() {
-    // Shared view & projection matrices
-    glm::mat4 view = glm::lookAt(
-        cameraPos,
-        cameraPos + cameraDir,
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
-
-    glm::mat4 projection = glm::perspective(
-        glm::radians(45.0f),
-        800.0f / 600.0f,
-        0.1f,
-        100.0f
-    );
-
-    // 1. Draw skybox first (behind everything)
-    skybox.Render(view, projection);
-
-    // 2. Draw the rotating cube
+void P1Scene::OnRender(const glm::mat4& view, const glm::mat4& projection) {
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, glm::radians(rotationAngle), glm::vec3(0.5f, 1.0f, 0.0f));
     glm::mat4 mvp = projection * view * model;
@@ -139,14 +88,11 @@ void P1Scene::Render() {
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 }
 
-void P1Scene::Unload() {
+void P1Scene::OnUnload() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
     shader.Unload();
-    skybox.Unload();
     VAO = VBO = EBO = 0;
     rotationAngle = 0.0f;
-    glDisable(GL_DEPTH_TEST);
-    glfwSetInputMode(glfwGetCurrentContext(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
