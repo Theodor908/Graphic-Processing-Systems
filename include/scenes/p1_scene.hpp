@@ -1,28 +1,18 @@
 #pragma once
-#include "scenes/scene.hpp"
-#include "scenes/skybox.hpp"
+#include "scenes/scene3d.hpp"
 #include "shaders/shader.hpp"
-#include <glm/glm.hpp>
 
-class P1Scene : public Scene {
+class P1Scene : public Scene3D {
 public:
-    P1Scene() : Scene("Skybox") {}
+    P1Scene() : Scene3D("Skybox", glm::vec3(0.0f, 2.0f, 3.0f)) {}
 
-    void Load() override;
-    void Update() override;
-    void Render() override;
-    void Unload() override;
+    void OnLoad() override;
+    void OnUpdate() override;
+    void OnRender(const glm::mat4& view, const glm::mat4& projection) override;
+    void OnUnload() override;
 
 private:
-    Skybox skybox;
     Shader shader;
-    unsigned int VAO = 0;
-    unsigned int VBO = 0;
-    unsigned int EBO = 0;
+    unsigned int VAO = 0, VBO = 0, EBO = 0;
     float rotationAngle = 0.0f;
-
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-     glm::vec3 cameraDir = glm::vec3(0.0f, 0.0f, -1.0f);
-    float yaw = -90.0f;
-    float pitch = 0.0f;
 };
