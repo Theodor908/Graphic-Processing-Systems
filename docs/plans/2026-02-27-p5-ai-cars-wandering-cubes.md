@@ -1,3 +1,113 @@
+# P5 — AI Cars + Wandering Cubes Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Add 2 AI cars orbiting the road and 5 wandering cubes bouncing off buildings to a fully lit scene with the player-controlled car from P4.
+
+**Architecture:** P5Scene extends Scene3D like P4, reuses the same environment/lights. AI cars advance an angle parameter over time and derive position/yaw from the elliptical road. Wandering cubes move in random XZ directions and reflect off static colliders. Player car collides with everything (static + dynamic).
+
+**Tech Stack:** OpenGL 3.3, GLM, GLFW, ImGui, existing Scene3D/AABB/LightingSystem
+
+---
+
+### Task 1: Write P5Scene header
+
+**Files:**
+- Modify: `include/scenes/p5_scene.hpp`
+
+**Step 1: Replace contents with Scene3D subclass**
+
+```cpp
+#pragma once
+#include "scenes/scene3d.hpp"
+#include "scenes/road.hpp"
+#include "scenes/static_object.hpp"
+#include "collision/aabb.hpp"
+#include <vector>
+
+struct AICar {
+    float angle;       // current position on ellipse (radians)
+    float speed;       // angular speed (radians/sec)
+    glm::vec3 pos;
+    float yaw;
+};
+
+struct WanderCube {
+    glm::vec3 pos;
+    glm::vec3 dir;     // normalized XZ direction
+    float speed;
+};
+
+class P5Scene : public Scene3D {
+public:
+    P5Scene();
+
+    void OnLoad() override;
+    void OnUpdate() override;
+    void OnRender(const glm::mat4& view, const glm::mat4& projection) override;
+    void OnUnload() override;
+    void OnRenderGeometry(unsigned int shaderID, const glm::mat4& lightMVP) override;
+
+private:
+    Road road;
+    StaticObjectRenderer objectRenderer;
+    std::vector<ObjectInstance> objects;
+    std::vector<AABB> staticColliders;
+    std::vector<unsigned int> loadedTextures;
+
+    // Player car (same as P4)
+    glm::vec3 carPos = glm::vec3(37.5f, 0.0f, 0.0f);
+    float carYaw = 0.0f;
+    float carSpeed = 0.0f;
+    float collisionTimer = 0.0f;
+
+    static constexpr float CAR_MAX_SPEED = 15.0f;
+    static constexpr float CAR_ACCEL = 20.0f;
+    static constexpr float CAR_BRAKE = 30.0f;
+    static constexpr float CAR_FRICTION = 8.0f;
+    static constexpr float CAR_TURN_SPEED = 120.0f;
+    static constexpr float CAM_DISTANCE = 12.0f;
+    static constexpr float CAM_HEIGHT = 6.0f;
+    glm::vec3 carScale = glm::vec3(1.5f, 1.0f, 2.5f);
+    glm::vec3 carHalf = glm::vec3(1.0f, 1.5f, 1.0f);
+
+    // AI cars
+    std::vector<AICar> aiCars;
+    glm::vec3 aiCarScale = glm::vec3(1.5f, 1.0f, 2.5f);
+    glm::vec3 aiCarHalf = glm::vec3(1.0f, 1.5f, 1.0f);
+
+    // Wandering cubes
+    std::vector<WanderCube> wanderCubes;
+    glm::vec3 wanderScale = glm::vec3(1.0f, 1.0f, 1.0f);
+    glm::vec3 wanderHalf = glm::vec3(0.5f, 1.5f, 0.5f);
+
+    // Road ellipse center-line radii
+    static constexpr float ROAD_RX = 37.5f;
+    static constexpr float ROAD_RZ = 27.5f;
+
+    void SetupObjects();
+    void SetupLights();
+    void UpdatePlayerCar(float dt);
+    void UpdateAICars(float dt);
+    void UpdateWanderCubes(float dt);
+    void CollectDynamicColliders(std::vector<AABB>& out) const;
+    glm::mat4 GetPlayerCarModel() const;
+    glm::mat4 GetAICarModel(const AICar& ai) const;
+    glm::mat4 GetWanderCubeModel(const WanderCube& wc) const;
+    void RenderDynamic(unsigned int shaderID);
+};
+```
+
+---
+
+### Task 2: Implement P5Scene
+
+**Files:**
+- Modify: `src/scenes/p5_scene.cpp`
+
+**Step 1: Replace contents with full implementation**
+
+```cpp
 #include "scenes/p5_scene.hpp"
 #include "lighting/light.hpp"
 #include "utils/time.hpp"
@@ -10,7 +120,7 @@
 #include <cstdlib>
 
 P5Scene::P5Scene() : Scene3D({
-    .name = "Random and AI Cars",
+    .name = "Scene 5",
     .cameraPos = glm::vec3(0.0f, 15.0f, 50.0f),
     .farPlane = 200.0f,
     .useLighting = true
@@ -31,32 +141,28 @@ void P5Scene::OnLoad() {
     aiCars.push_back({ 0.0f, 0.8f, glm::vec3(0), 0.0f });
     aiCars.push_back({ glm::radians(180.0f), 1.1f, glm::vec3(0), 0.0f });
 
-    // 5 wandering cubes spawned between road and buildings
-    srand(42);
+    // 5 wandering cubes in random positions outside the road
+    srand(42); // deterministic for reproducibility
     for (int i = 0; i < 5; i++) {
         float angle = glm::radians(i * 72.0f + 15.0f);
-        float radius = 42.0f + (rand() % 4);
+        float radius = 50.0f + (rand() % 10);
         glm::vec3 pos(radius * std::cos(angle), 0.0f, radius * std::sin(angle));
 
         float dirAngle = glm::radians((float)(rand() % 360));
         glm::vec3 dir(std::cos(dirAngle), 0.0f, std::sin(dirAngle));
 
-        wanderCubes.push_back({ pos, dir, 3.0f + (float)(rand() % 3) });
+        wanderCubes.push_back({ pos, dir, 3.0f + (rand() % 3) });
     }
 }
 
+// SetupObjects and SetupLights are identical to P4
 void P5Scene::SetupObjects() {
     unsigned int brickTex = objectRenderer.LoadTexture("resources/textures/objects/building.jpg");
     unsigned int woodTex  = objectRenderer.LoadTexture("resources/textures/objects/tree_trunk.jpg");
     unsigned int steelTex = objectRenderer.LoadTexture("resources/textures/objects/steel.jpg");
-    unsigned int carTex   = objectRenderer.LoadTexture("resources/textures/objects/car.jpg");
-    unsigned int cubeTex  = objectRenderer.LoadTexture("resources/textures/objects/cube.jpg");
-
     loadedTextures.push_back(brickTex);
     loadedTextures.push_back(woodTex);
     loadedTextures.push_back(steelTex);
-    loadedTextures.push_back(carTex);
-    loadedTextures.push_back(cubeTex);
 
     for (int i = 0; i < 5; i++) {
         float angle = glm::radians(i * 72.0f);
@@ -71,12 +177,6 @@ void P5Scene::SetupObjects() {
         float z = 34.0f * std::sin(angle);
         float height = 6.0f + (rand() % 5);
         objects.push_back({ glm::vec3(x, 1.0f, z), glm::vec3(1, height, 1), woodTex });
-        float treeTop = 1.0f + height;
-        for (int b = 0; b < 4; b++) {
-            float yaw = glm::radians(b * 90.0f);
-            objects.push_back({ glm::vec3(x, treeTop, z), glm::vec3(0.4f, 3.0f, 0.4f), woodTex,
-                                glm::vec3(0.0f, yaw, glm::radians(-45.0f)) });
-        }
     }
     float streetlightAngles[] = { 0.0f, 90.0f, 180.0f, 270.0f };
     for (int i = 0; i < 4; i++) {
@@ -119,6 +219,17 @@ void P5Scene::SetupLights() {
         s.outerCutOff = glm::cos(glm::radians(40.0f));
         s.range = 30.0f;
         lighting.AddSpotLight(s);
+    }
+
+    glm::vec3 pc[] = { {1,0.6f,0.3f}, {0.3f,0.6f,1}, {0.5f,1,0.5f} };
+    float pa[] = { 60.0f, 180.0f, 300.0f };
+    for (int i = 0; i < 3; i++) {
+        float a = glm::radians(pa[i]);
+        PointLight p;
+        p.position = glm::vec3(25*std::cos(a), 5, 25*std::sin(a));
+        p.color = pc[i]; p.intensity = 3; p.constant = 1;
+        p.linear = 0.09f; p.quadratic = 0.032f;
+        lighting.AddPointLight(p);
     }
 }
 
@@ -170,7 +281,7 @@ void P5Scene::UpdateAICars(float dt) {
             ROAD_RZ * std::sin(ai.angle)
         );
 
-        // Yaw from ellipse tangent
+        // Yaw from ellipse tangent: d/dt(cos(t),sin(t)) = (-sin(t),cos(t))
         float tx = -ROAD_RX * std::sin(ai.angle);
         float tz =  ROAD_RZ * std::cos(ai.angle);
         ai.yaw = glm::degrees(std::atan2(tx, tz));
@@ -191,7 +302,7 @@ void P5Scene::UpdateWanderCubes(float dt) {
         }
         if (hitX) {
             newPos.x = wc.pos.x;
-            wc.dir.x = -wc.dir.x;
+            wc.dir.x = -wc.dir.x; // reflect X
         }
 
         // Try Z
@@ -203,7 +314,7 @@ void P5Scene::UpdateWanderCubes(float dt) {
         }
         if (hitZ) {
             newPos.z = wc.pos.z;
-            wc.dir.z = -wc.dir.z;
+            wc.dir.z = -wc.dir.z; // reflect Z
         }
 
         wc.pos = newPos;
@@ -275,26 +386,26 @@ void P5Scene::RenderDynamic(unsigned int shaderID) {
     glUniformMatrix4fv(glGetUniformLocation(shaderID, "uModel"),
                        1, GL_FALSE, glm::value_ptr(GetPlayerCarModel()));
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, loadedTextures[3]); // carTex
+    glBindTexture(GL_TEXTURE_2D, loadedTextures[2]); // steelTex
     glUniform1i(glGetUniformLocation(shaderID, "uTexture"), 0);
     objectRenderer.BindAndDraw();
 
-    // AI cars (brick texture for contrast)
+    // AI cars (use brick texture for contrast)
     for (const auto& ai : aiCars) {
         glUniformMatrix4fv(glGetUniformLocation(shaderID, "uModel"),
                            1, GL_FALSE, glm::value_ptr(GetAICarModel(ai)));
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, loadedTextures[3]); // carTex
+        glBindTexture(GL_TEXTURE_2D, loadedTextures[0]); // brickTex
         glUniform1i(glGetUniformLocation(shaderID, "uTexture"), 0);
         objectRenderer.BindAndDraw();
     }
 
-    // Wandering cubes (rainbow texture)
+    // Wandering cubes (use wood texture)
     for (const auto& wc : wanderCubes) {
         glUniformMatrix4fv(glGetUniformLocation(shaderID, "uModel"),
                            1, GL_FALSE, glm::value_ptr(GetWanderCubeModel(wc)));
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, loadedTextures[4]); // cubeTex
+        glBindTexture(GL_TEXTURE_2D, loadedTextures[1]); // woodTex
         glUniform1i(glGetUniformLocation(shaderID, "uTexture"), 0);
         objectRenderer.BindAndDraw();
     }
@@ -307,7 +418,9 @@ void P5Scene::OnRenderGeometry(unsigned int shaderID, const glm::mat4& lightMVP)
     road.DrawGeometry();
 
     for (const auto& obj : objects) {
-        glm::mat4 model = ModelMatrixFromObject(obj);
+        glm::mat4 model = glm::translate(glm::mat4(1), obj.position);
+        model = glm::scale(model, obj.scale);
+        model = glm::translate(model, glm::vec3(0, 0.5f, 0));
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(lightMVP * model));
         objectRenderer.BindAndDraw();
     }
@@ -337,7 +450,9 @@ void P5Scene::OnRender(const glm::mat4& view, const glm::mat4& projection) {
 
         // Static objects
         for (const auto& obj : objects) {
-            glm::mat4 model = ModelMatrixFromObject(obj);
+            glm::mat4 model = glm::translate(glm::mat4(1), obj.position);
+            model = glm::scale(model, obj.scale);
+            model = glm::translate(model, glm::vec3(0, 0.5f, 0));
             glUniformMatrix4fv(glGetUniformLocation(litShader.programID, "uModel"),
                                1, GL_FALSE, glm::value_ptr(model));
             glActiveTexture(GL_TEXTURE0);
@@ -381,3 +496,28 @@ void P5Scene::OnUnload() {
     aiCars.clear();
     wanderCubes.clear();
 }
+```
+
+---
+
+### Task 3: Build and verify
+
+**Step 1: Reconfigure and build**
+
+Run: `export PATH="/c/msys64/ucrt64/bin:$PATH" && cmake -S . -B build -G Ninja && cmake --build build 2>&1`
+
+Expected: clean build.
+
+**Step 2: Manual verification**
+
+Run the app, switch to "Scene 5" tab:
+- [ ] Same environment as P3/P4 (buildings, trees, poles, road, lighting)
+- [ ] Player car works with WASD, 3rd-person camera follows
+- [ ] 2 AI cars orbit the road in opposite directions at different speeds
+- [ ] AI cars have yaw matching their travel direction (tangent to ellipse)
+- [ ] 5 wandering cubes drift around outside the road
+- [ ] Wandering cubes bounce off buildings/trees when they collide
+- [ ] Player car collides with AI cars (stops, shows COLLISION!)
+- [ ] Player car collides with wandering cubes
+- [ ] All dynamic objects cast shadows
+- [ ] Lighting debug UI still works

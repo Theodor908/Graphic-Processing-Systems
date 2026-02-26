@@ -31,9 +31,12 @@ void P4Scene::SetupObjects() {
     unsigned int brickTex = objectRenderer.LoadTexture("resources/textures/objects/building.jpg");
     unsigned int woodTex  = objectRenderer.LoadTexture("resources/textures/objects/tree_trunk.jpg");
     unsigned int steelTex = objectRenderer.LoadTexture("resources/textures/objects/steel.jpg");
+    unsigned int carTex   = objectRenderer.LoadTexture("resources/textures/objects/car.jpg");
+
     loadedTextures.push_back(brickTex);
     loadedTextures.push_back(woodTex);
     loadedTextures.push_back(steelTex);
+    loadedTextures.push_back(carTex);
 
     // 5 buildings
     for (int i = 0; i < 5; i++) {
@@ -51,6 +54,12 @@ void P4Scene::SetupObjects() {
         float z = (30.0f + 4.0f) * std::sin(angle);
         float height = 6.0f + (rand() % 5);
         objects.push_back({ glm::vec3(x, 1.0f, z), glm::vec3(1, height, 1), woodTex });
+        float treeTop = 1.0f + height;
+        for (int b = 0; b < 4; b++) {
+            float yaw = glm::radians(b * 90.0f);
+            objects.push_back({ glm::vec3(x, treeTop, z), glm::vec3(0.4f, 3.0f, 0.4f), woodTex,
+                                glm::vec3(0.0f, yaw, glm::radians(-45.0f)) });
+        }
     }
 
     // 4 lamp poles
@@ -100,24 +109,6 @@ void P4Scene::SetupLights() {
         spot.outerCutOff = glm::cos(glm::radians(40.0f));
         spot.range = 30.0f;
         lighting.AddSpotLight(spot);
-    }
-
-    glm::vec3 pointColors[] = {
-        glm::vec3(1.0f, 0.6f, 0.3f),
-        glm::vec3(0.3f, 0.6f, 1.0f),
-        glm::vec3(0.5f, 1.0f, 0.5f)
-    };
-    float pointAngles[] = { 60.0f, 180.0f, 300.0f };
-    for (int i = 0; i < 3; i++) {
-        float angle = glm::radians(pointAngles[i]);
-        PointLight pt;
-        pt.position = glm::vec3(25.0f * std::cos(angle), 5.0f, 25.0f * std::sin(angle));
-        pt.color = pointColors[i];
-        pt.intensity = 3.0f;
-        pt.constant = 1.0f;
-        pt.linear = 0.09f;
-        pt.quadratic = 0.032f;
-        lighting.AddPointLight(pt);
     }
 }
 
@@ -209,7 +200,7 @@ void P4Scene::RenderCar(unsigned int shaderID) {
     glUniformMatrix4fv(glGetUniformLocation(shaderID, "uModel"),
                        1, GL_FALSE, glm::value_ptr(model));
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, loadedTextures[2]); // steelTex
+    glBindTexture(GL_TEXTURE_2D, loadedTextures[3]); 
     glUniform1i(glGetUniformLocation(shaderID, "uTexture"), 0);
     objectRenderer.BindAndDraw();
 }
@@ -223,10 +214,7 @@ void P4Scene::OnRenderGeometry(unsigned int shaderID, const glm::mat4& lightMVP)
 
     // Static objects
     for (const auto& obj : objects) {
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, obj.position);
-        model = glm::scale(model, obj.scale);
-        model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+        glm::mat4 model = ModelMatrixFromObject(obj);
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(lightMVP * model));
         objectRenderer.BindAndDraw();
     }
@@ -249,10 +237,7 @@ void P4Scene::OnRender(const glm::mat4& view, const glm::mat4& projection) {
 
         // Static objects
         for (const auto& obj : objects) {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, obj.position);
-            model = glm::scale(model, obj.scale);
-            model = glm::translate(model, glm::vec3(0.0f, 0.5f, 0.0f));
+            glm::mat4 model = ModelMatrixFromObject(obj);
             glUniformMatrix4fv(glGetUniformLocation(litShader.programID, "uModel"),
                                1, GL_FALSE, glm::value_ptr(model));
             glActiveTexture(GL_TEXTURE0);
