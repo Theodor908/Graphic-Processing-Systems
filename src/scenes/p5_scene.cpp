@@ -122,7 +122,7 @@ void P5Scene::SetupLights() {
     }
 }
 
-// --- Model matrices ---
+// Model matrices
 
 glm::mat4 P5Scene::GetPlayerCarModel() const {
     glm::mat4 m = glm::mat4(1.0f);
@@ -150,7 +150,7 @@ glm::mat4 P5Scene::GetWanderCubeModel(const WanderCube& wc) const {
     return m;
 }
 
-// --- Update logic ---
+// Update
 
 void P5Scene::CollectDynamicColliders(std::vector<AABB>& out) const {
     for (const auto& ai : aiCars)
@@ -276,7 +276,7 @@ void P5Scene::OnUpdate() {
     UpdatePlayerCar(dt);
 }
 
-// --- Rendering ---
+// Rendering
 
 void P5Scene::RenderDynamic(unsigned int shaderID) {
     // Player car

@@ -7,7 +7,7 @@
 void Skybox::Load() {
     shader = Shader::LoadShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
 
-    // Your vertices — 8 corners of a cube
+    // Cube corners
     float vertices[] = {
         -0.5f,  0.5f,  0.5f,  // 0: front top left
          0.5f,  0.5f,  0.5f,  // 1: front top right
@@ -19,7 +19,7 @@ void Skybox::Load() {
         -0.5f, -0.5f, -0.5f,  // 7: back bottom left
     };
 
-    // Your indices — 6 faces × 2 triangles
+    // 6 faces, 2 tris each
     unsigned int indices[] = {
         0, 1, 2,  2, 3, 0,  // front
         4, 5, 6,  6, 7, 4,  // back
@@ -29,7 +29,7 @@ void Skybox::Load() {
         0, 4, 7,  7, 3, 0,  // left
     };
 
-    // Your GPU upload code (with the fixes applied)
+    // Upload to GPU
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
@@ -46,17 +46,17 @@ void Skybox::Load() {
 
     glBindVertexArray(0);
 
-    // Your cubemap loader
+    // Load cubemap faces
     cubemapTexture = LoadCubemap();
 }
 
 void Skybox::Render(const glm::mat4& view, const glm::mat4& projection) {
-    // Depth trick: skybox is always "behind" everything
+    // Draw behind everything
     glDepthFunc(GL_LEQUAL);
 
     glUseProgram(shader.programID);
 
-    // Strip translation from view matrix (your key learning!)
+    // Remove translation so skybox stays centered on camera
     glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
 
     int viewLoc = glGetUniformLocation(shader.programID, "uView");
@@ -84,7 +84,7 @@ void Skybox::Unload() {
 }
 
 unsigned int Skybox::LoadCubemap() {
-    // Your cubemap loading code
+    // Load all 6 faces
     std::string faces[] = {
         "resources/textures/skybox/right.png",
         "resources/textures/skybox/left.png",

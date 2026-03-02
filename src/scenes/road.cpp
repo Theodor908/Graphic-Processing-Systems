@@ -68,7 +68,7 @@ void Road::GenerateGeometry() {
     indexCount = (int)indices.size();
 
 
-    // --- GPU upload (don't modify below) ---
+    // Upload to GPU
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 

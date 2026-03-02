@@ -47,9 +47,8 @@ void P3Scene::SetupObjects() {
         float x = (40.0f + 4.0f) * cos(angle);
         float z = (30.0f + 4.0f) * sin(angle);
         float height = 6.0f + (rand() % 5);
-        // Trunk
         objects.push_back({ glm::vec3(x, 1.0f, z), glm::vec3(1, height, 1), woodTex });
-        // 4 branches at the top, tilted 45 degrees outward
+        // Branches
         float treeTop = 1.0f + height;
         for (int b = 0; b < 4; b++) {
             float yaw = glm::radians(b * 90.0f);
@@ -62,10 +61,8 @@ void P3Scene::SetupObjects() {
     float streetlightAngles[] = { 0.0f, 90.0f, 180.0f, 270.0f };
     for (int i = 0; i < 4; i++) {
         float angle = glm::radians(streetlightAngles[i]);
-        // Light hangs at middle of road
         float lightX = 37.5f * cos(angle);
         float lightZ = 27.5f * sin(angle);
-        // Pole base at outer road edge
         float poleX = 40.0f * cos(angle);
         float poleZ = 30.0f * sin(angle);
 
@@ -76,13 +73,12 @@ void P3Scene::SetupObjects() {
         objects.push_back({ glm::vec3(poleX, 0.0f, poleZ),
                             glm::vec3(armThickness, poleHeight, armThickness), steelTex });
 
-        // Horizontal arm connecting pole top to light position
+        // Arm between pole and light
         float dx = lightX - poleX;
         float dz = lightZ - poleZ;
         float armLen = std::sqrt(dx * dx + dz * dz);
         float armX = (poleX + lightX) * 0.5f;
         float armZ = (poleZ + lightZ) * 0.5f;
-        // Orient arm along whichever axis has the larger delta
         glm::vec3 armScale = (std::abs(dx) > std::abs(dz))
             ? glm::vec3(armLen, armThickness, armThickness)
             : glm::vec3(armThickness, armThickness, armLen);
